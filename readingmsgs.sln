@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "readingmsgs", "readingmsgs\readingmsgs.csproj", "{86DF92F8-B149-473E-80AB-93D831D3E41E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{86DF92F8-B149-473E-80AB-93D831D3E41E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86DF92F8-B149-473E-80AB-93D831D3E41E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86DF92F8-B149-473E-80AB-93D831D3E41E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86DF92F8-B149-473E-80AB-93D831D3E41E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {733B71F1-7D39-4C07-A20F-94BEB0AF1A80}
+	EndGlobalSection
+EndGlobal
