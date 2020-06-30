@@ -30,10 +30,12 @@ public class getretryemail
     }
     public class getmainmail
     {
-        [JsonProperty(PropertyName = "id")]
-        public string Id { get; set; }
-        public int BounceCount=0;
+       // [JsonProperty(PropertyName = "id")]
+        
         public VerifyEmailResponse VerifyEmailResponse { get; set; }
+        public string id { get; set; }
+        public int BounceCount = 0;
+        public string partitionKey { get; set; }
     }
     public  class VerifyEmailResponse
     {
@@ -219,7 +221,7 @@ public class getretryemail
         {
 
             await AddItemstoMainContainer(obj);
-            await DeleteItem(obj.Id,new PartitionKey( obj.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete.Substring(0,2)));
+            await DeleteItem(obj.id,new PartitionKey( obj.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete.Substring(0,2)));
         }
 
         public async Task Readfromdb() {
