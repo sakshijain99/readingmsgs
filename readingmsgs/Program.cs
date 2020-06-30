@@ -91,6 +91,7 @@ namespace readingmsgs
         }
         public static async Task getemailobject(string id)
         {
+            emailist.Clear();
             var sqlQueryText = $"SELECT * FROM c WHERE c.id =\"{id}\" ";
             //  Console.WriteLine(sqlQueryText);
             // Console.ReadKey();
@@ -148,7 +149,7 @@ namespace readingmsgs
         public static async Task Main(string[] args)
         {
             Program programobject = new Program();
-            emailist.Clear();
+            
          await GetRef();
             IEnumerable<BrokeredMessage> messageList = await subscriptionClient.ReceiveBatchAsync(2);
             foreach (var message in messageList)
@@ -220,7 +221,7 @@ namespace readingmsgs
                     SignalObject.attributes = attributelist;
                     SignalObject.internalProcessingDate = DateTime.UtcNow;
                     //await SendSignalviaHttpAsync(SignalObject);
-                   // await Delete(mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete, new PartitionKey(mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete.Substring(0, 2)));
+                   
                     await AddItemstoMainContainer(mainmail);
                 }
                 else if (statusmail == "item not found")
@@ -269,7 +270,7 @@ namespace readingmsgs
                    //  await Delete(mainmail.id, new PartitionKey(mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete.Substring(0,2)));
                         await AddItemstoMainContainer(emailist[0]);
                         Console.WriteLine(emailist[0].BounceCount);
-                        if (mainmail.BounceCount >= 5)
+                        if (mainmail.BounceCount == 5)
                         {
                             emailstatus = "Email Not Valid";
                             codeofstatus = "300";
@@ -301,7 +302,7 @@ namespace readingmsgs
                                 SignalObject.internalProcessingDate = DateTime.UtcNow;
                           
                                 // await SendSignalviaHttpAsync(SignalObject);
-                               // await Delete(mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete, new PartitionKey(mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete.Substring(0, 2)));
+                              
                                 await AddItemstoMainContainer(mainmail);
                             }
                             else if (statusmail == "item not found")
