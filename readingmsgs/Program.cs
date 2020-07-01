@@ -35,7 +35,7 @@ namespace readingmsgs
     public class signal
     {
         public string impactedEntity = "Contact";
-        public string signalType = "EmailValidationDataUpdate";
+        public string signalType = "EmailValidationStatusChange";
         public string action = "Update";
         public Key keys { get; set; }
         public List<Attribute> attributes { get; set; }
@@ -122,16 +122,10 @@ namespace readingmsgs
                 return ("item not found");
             }
         }
-        public static async Task Delete(string id,PartitionKey p)
-        {
-         
-            // Delete an item. Note we must provide the partition key value and id of the item to delete
-            ItemResponse<getmainmail> deleteResponse = await azurecontainer.DeleteItemAsync<getmainmail>(id,p);
-            Console.WriteLine("Deleted item");
-        }
+        
         public static async Task SendSignalviaHttpAsync(signal signalObject)
         {
-            var token = new AzureServiceTokenProvider("RunAs=App;AppId=aa0c3919-10cc-41aa-b236-35329c72ce95;TenantId=72f988bf-86f1-41af-91ab-2d7cd011db47;CertificateThumbprint=624225424959582dc202a153b69aa7f85c90c57b;CertificateStoreLocation=CurrentUser");
+            var token = new AzureServiceTokenProvider("RunAs=App;AppId=aa0c3919-10cc-41aa-b236-35329c72ce95;TenantId=72f988bf-86f1-41af-91ab-2d7cd011db47;CertificateThumbprint=624225424959582dc202a153b69aa7f85c90c57b;CertificateStoreLocation=LocalMachine");
             var requiredtoken = await token.GetAccessTokenAsync("https://activitystore-ppe.trafficmanager.net");
             HttpClient client = new HttpClient();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -249,42 +243,51 @@ namespace readingmsgs
                 servresult.Email = mailobject;
                 servresult.Hygiene = hygieneobj;
                 mainmail.VerifyEmailResponse = verifyemailresponse;
-                mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusDescription = emailstatus;
+              //  mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusDescription = emailstatus;
                
                 mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete = mailId;
                 mainmail.id = mailId;
                 mainmail.partitionKey = mainmail.id.Substring(0, 2);
                 var statusmail = await ReadItemsFromMainCollection(mainmail.id, new PartitionKey(mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete.Substring(0, 2)));
-                if (statusmail != "300")
+                if (statusmail == "item not found")
                 {
+                    mainmail.BounceCount++;
+                    await AddItemstoMainContainer(mainmail);
+                }
+                else if (statusmail != "300" && statusmail != "item not found")
+                {
+                    mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusNbr = long.Parse(statusmail);
                     await getemailobject(mainmail.id);
-                    if (emailist.Count == 0)
+                    //  if (emailist.Count == 0)
+                    //{
+                    //  mainmail.BounceCount++;
+                    //await AddItemstoMainContainer(mainmail);
+                    //}
+                    // else
+                    //{
+                    mainmail = emailist[0];
+                    emailist[0].BounceCount++;
+                    await AddItemstoMainContainer(emailist[0]);
+                    Console.WriteLine(emailist[0].BounceCount);
+
+                    if (mainmail.BounceCount == 5)
                     {
-                        mainmail.BounceCount++;
-                        await AddItemstoMainContainer(mainmail);
-                    }
-                    else
-                    {
-                        mainmail = emailist[0];
-                        emailist[0].BounceCount++;
-                   //  await Delete(mainmail.id, new PartitionKey(mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete.Substring(0,2)));
-                        await AddItemstoMainContainer(emailist[0]);
-                        Console.WriteLine(emailist[0].BounceCount);
-                        if (mainmail.BounceCount == 5)
+                        emailstatus = "Email Not Valid";
+                        codeofstatus = "300";
+
+                       
+
+                        if (statusmail != codeofstatus && statusmail != "item not found" && statusmail != "300")
                         {
-                            emailstatus = "Email Not Valid";
-                            codeofstatus = "300";
-
-                            signal SignalObject = new signal();
-                            List<Attribute> attributelist = new List<Attribute>();
-                            Attribute attributeobjectnew = new Attribute();
-                            Attribute attributeobjectold = new Attribute();
-
-                            if (statusmail != codeofstatus && statusmail != "item not found")
+                            mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusDescription = emailstatus;
+                            mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusNbr = long.Parse(codeofstatus);
+                        
+                            if (statusmail != "0")
                             {
-                                mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusDescription = emailstatus;
-                                mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusNbr =long.Parse(codeofstatus);
-                                statuschange.Add(mainmail.id);
+                                signal SignalObject = new signal();
+                                List<Attribute> attributelist = new List<Attribute>();
+                                Attribute attributeobjectnew = new Attribute();
+                                Attribute attributeobjectold = new Attribute();
                                 Guid g = Guid.NewGuid();
                                 Key keyobject = new Key();
                                 keyobject.value = mainmail.id;
@@ -300,23 +303,17 @@ namespace readingmsgs
                                 attributelist.Add(attributeobjectnew);
                                 SignalObject.attributes = attributelist;
                                 SignalObject.internalProcessingDate = DateTime.UtcNow;
-                          
-                                // await SendSignalviaHttpAsync(SignalObject);
-                              
-                                await AddItemstoMainContainer(mainmail);
+
+                                 await SendSignalviaHttpAsync(SignalObject);
                             }
-                            else if (statusmail == "item not found")
-                                await AddItemstoMainContainer(mainmail);
-
-
+                            await AddItemstoMainContainer(mainmail);
                         }
                     }
+                }
+                    
                     message.Complete();
                     Console.WriteLine("message deleted");
                 }
-            }
-            foreach (var item in statuschange)
-                Console.WriteLine(item);
         }
         }
     }
