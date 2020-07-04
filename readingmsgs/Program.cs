@@ -37,7 +37,7 @@ namespace readingmsgs
         public string impactedEntity = "Contact";
         public string signalType = "EmailValidationStatusChange";
         public string action = "Update";
-        public Key keys { get; set; }
+        public List<Key> keys { get; set; }
         public List<Attribute> attributes { get; set; }
         public object headers { get; set; }
         public string correlationId { get; set; }
@@ -156,6 +156,16 @@ namespace readingmsgs
 
         public static async void processingmessage(BrokeredMessage message)
         {
+            Dictionary<string, string> dict = new Dictionary<string, string>();
+            dict.Add("200", "EMAIL_VALID");
+            dict.Add("210", "DOMAIN_EXISTS");
+            dict.Add("220", "RETRY");
+            dict.Add("250", "EMAIL_EXISTS_BUT_SPAM");
+            dict.Add("260", "DOMAIN_EXISTS_BUT_SPAM");
+            dict.Add("270", "RETRY");
+            dict.Add("300", "EMAIL_NOT_VALID");
+            dict.Add("310", "DOMAIN_EXISTS_BUT_SPAM");
+           
             Stream stream = message.GetBody<Stream>();
             StreamReader reader = new StreamReader(stream);
             string messagestring = reader.ReadToEnd();
@@ -184,46 +194,44 @@ namespace readingmsgs
                 servresult.Reason = Reasonobj;
                 servresult.Email = mailobject;
                 servresult.Hygiene = hygieneobj;
-                mainmail.VerifyEmailResponse = verifyemailresponse;
-                mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusDescription = emailstatus;
-               
+                mainmail.VerifyEmailResponse = verifyemailresponse;            
                 mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete = mailId;
                 mainmail.id = mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete;
                 mainmail.partitionKey = mainmail.id.Substring(0, 2);
-                mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusNbr = long.Parse(codeofstatus);
-                signal SignalObject = new signal();
-                List<Attribute> attributelist = new List<Attribute>();
-                Attribute attributeobjectnew = new Attribute();
-                Attribute attributeobjectold = new Attribute();
+                               
                 var statusmail = await ReadItemsFromMainCollection(mainmail.id, new PartitionKey(mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete.Substring(0, 2)));
+                mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusNbr = long.Parse(codeofstatus);
+                mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusDescription = emailstatus;
                 if (statusmail != codeofstatus && statusmail != "item not found")
                 {
-                    statuschange.Add(mainmail.id);
+                    signal SignalObject = new signal();
+                    List<Attribute> attributelist = new List<Attribute>();
+                    List<Key> keylist = new List<Key>();
+                    Attribute attributeobjectnew = new Attribute();
+                    Attribute attributeobjectold = new Attribute();
                     Guid g = Guid.NewGuid();
                     Key keyobject = new Key();
                     keyobject.value = mainmail.id;
-                    SignalObject.keys = keyobject;
+                    keylist.Add(keyobject);
+                    SignalObject.keys =keylist;
                     SignalObject.correlationId = g.ToString();
                     SignalObject.originatingSystemDate = (DateTime)json["EventProcessedUtcTime"];
 
-                    attributeobjectnew.key = "StatusCode.new";
-                    attributeobjectnew.value = codeofstatus;
-                    attributeobjectold.key = "StatusCode.old";
-                    attributeobjectold.value = statusmail;
+                    attributeobjectnew.key = "EmailMatchType.new";
+                    attributeobjectnew.value = dict[codeofstatus];
+                    attributeobjectold.key = "EmailMatchType.old";
+                    attributeobjectold.value = dict[statusmail];
                     attributelist.Add(attributeobjectold);
                     attributelist.Add(attributeobjectnew);
                     SignalObject.attributes = attributelist;
                     SignalObject.internalProcessingDate = DateTime.UtcNow;
-                    //await SendSignalviaHttpAsync(SignalObject);
-                   
+                    await SendSignalviaHttpAsync(SignalObject);
+                   }
                     await AddItemstoMainContainer(mainmail);
-                }
-                else if (statusmail == "item not found")
-                    await AddItemstoMainContainer(mainmail);
-
                 message.Complete();
                 Console.WriteLine("message deleted");
-            }
+            }           
+            
 
             else
             {
@@ -258,14 +266,7 @@ namespace readingmsgs
                 {
                     mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusNbr = long.Parse(statusmail);
                     await getemailobject(mainmail.id);
-                    //  if (emailist.Count == 0)
-                    //{
-                    //  mainmail.BounceCount++;
-                    //await AddItemstoMainContainer(mainmail);
-                    //}
-                    // else
-                    //{
-                    mainmail = emailist[0];
+                     mainmail = emailist[0];
                     emailist[0].BounceCount++;
                     await AddItemstoMainContainer(emailist[0]);
                     Console.WriteLine(emailist[0].BounceCount);
@@ -273,9 +274,7 @@ namespace readingmsgs
                     if (mainmail.BounceCount == 5)
                     {
                         emailstatus = "Email Not Valid";
-                        codeofstatus = "300";
-
-                       
+                        codeofstatus = "300";                     
 
                         if (statusmail != codeofstatus && statusmail != "item not found" && statusmail != "300")
                         {
@@ -288,23 +287,25 @@ namespace readingmsgs
                                 List<Attribute> attributelist = new List<Attribute>();
                                 Attribute attributeobjectnew = new Attribute();
                                 Attribute attributeobjectold = new Attribute();
+                                List<Key> keylist = new List<Key>();
                                 Guid g = Guid.NewGuid();
                                 Key keyobject = new Key();
                                 keyobject.value = mainmail.id;
-                                SignalObject.keys = keyobject;
+                                keylist.Add(keyobject);
+                                SignalObject.keys = keylist;
                                 SignalObject.correlationId = g.ToString();
                                 SignalObject.originatingSystemDate = (DateTime)json["EventProcessedUtcTime"];
 
-                                attributeobjectnew.key = "StatusCode.new";
-                                attributeobjectnew.value = codeofstatus;
-                                attributeobjectold.key = "StatusCode.old";
-                                attributeobjectold.value = statusmail;
+                                attributeobjectnew.key = "EmailMatchType.new";
+                                attributeobjectnew.value = dict[codeofstatus];
+                                attributeobjectold.key = "EmailMatchType.old";
+                                attributeobjectold.value = dict[statusmail];
                                 attributelist.Add(attributeobjectold);
                                 attributelist.Add(attributeobjectnew);
                                 SignalObject.attributes = attributelist;
                                 SignalObject.internalProcessingDate = DateTime.UtcNow;
 
-                                 await SendSignalviaHttpAsync(SignalObject);
+                                // await SendSignalviaHttpAsync(SignalObject);
                             }
                             await AddItemstoMainContainer(mainmail);
                         }
