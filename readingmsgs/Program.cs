@@ -142,7 +142,7 @@ namespace readingmsgs
         }
         public static async Task Main(string[] args)
         {
-            Program programobject = new Program();
+           // Program programobject = new Program();
             
          await GetRef();
             IEnumerable<BrokeredMessage> messageList = await subscriptionClient.ReceiveBatchAsync(2);
@@ -202,6 +202,7 @@ namespace readingmsgs
                 var statusmail = await ReadItemsFromMainCollection(mainmail.id, new PartitionKey(mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Email.Complete.Substring(0, 2)));
                 mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusNbr = long.Parse(codeofstatus);
                 mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusDescription = emailstatus;
+                mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Timestamp = DateTime.UtcNow;
                 if (statusmail != codeofstatus && statusmail != "item not found")
                 {
                     signal SignalObject = new signal();
@@ -280,7 +281,7 @@ namespace readingmsgs
                         {
                             mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusDescription = emailstatus;
                             mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceStatus.StatusNbr = long.Parse(codeofstatus);
-                        
+                            mainmail.VerifyEmailResponse.VerifyEmailResult.ServiceResult.Timestamp = DateTime.UtcNow;
                             if (statusmail != "0")
                             {
                                 signal SignalObject = new signal();
@@ -305,7 +306,7 @@ namespace readingmsgs
                                 SignalObject.attributes = attributelist;
                                 SignalObject.internalProcessingDate = DateTime.UtcNow;
 
-                                // await SendSignalviaHttpAsync(SignalObject);
+                                 await SendSignalviaHttpAsync(SignalObject);
                             }
                             await AddItemstoMainContainer(mainmail);
                         }
